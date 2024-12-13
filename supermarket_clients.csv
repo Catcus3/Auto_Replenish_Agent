@@ -1,0 +1,21 @@
+Client_ID,Age,Gender,Years_as_Client,Spending_Category,Average_Monthly_Spending,Preferred_Shopping_Times,Product_Preferences
+C001,32,Prefer Not to Say,13.7,High,353.38,Morning,Groceries
+C002,36,Non-Binary,10.8,Low,318.64,Night,Health & Beauty
+C003,22,Male,9.2,Medium,349.3,Afternoon,Health & Beauty
+C004,64,Male,7.1,Low,383.97,Morning,Beverages
+C005,52,Non-Binary,0.6,High,181.11,Morning,Snacks
+C006,73,Female,3.5,Medium,226.37,Morning,Groceries
+C007,53,Non-Binary,2.5,Medium,419.82,Afternoon,Beverages
+C008,62,Male,2.4,High,481.01,Morning,Household Items
+C009,19,Male,13.3,High,211.63,Afternoon,Health & Beauty
+C010,32,Non-Binary,12.3,Low,160.29,Evening,Groceries
+C011,51,Prefer Not to Say,11.2,Medium,124.34,Evening,Snacks
+C012,20,Non-Binary,9.4,High,195.44,Afternoon,Groceries
+C013,52,Non-Binary,3.9,Low,118.24,Night,Beverages
+C014,68,Female,4.7,High,480.21,Evening,Household Items
+C015,52,Prefer Not to Say,13.2,Low,374.38,Morning,Beverages
+C016,62,Female,14.5,High,56.37,Evening,Groceries
+C017,64,Female,8.5,Medium,337.83,Evening,Beverages
+C018,67,Prefer Not to Say,13.8,High,187.5,Afternoon,Beverages
+C019,18,Non-Binary,4.0,Medium,266.68,Afternoon,Groceries
+C020,41,Male,5.1,Low,385.71,Morning,Health & Beauty
