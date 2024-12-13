@@ -2,6 +2,7 @@
    - achieved functioning three agent system - supervisor, researcher and communication
    - researcher and communication agents successfully communicated and provided feedback to each other
    - supervisor failed to terminate discussion within recursive limit of 25 and system crashed
+   - in multi agent file - also contains prompt (which can be used to create different tool/agent) - where accesses data on clients and chooses best three clients to recommend a certain item to and gives a varying discount depending on how long theyve been with the company for - useful for overstocks
 
 2. Sending emails
    - achieved functioning sending email function using mailjet which allowed me to send emails to anyone about anything without exiting my code
