@@ -16,3 +16,5 @@ We attempted several extensions including:
 - sending emails (instead of just drafting them)
 - UI using Gradio
 - guardrails 
+
+NOTE - once aws access taken away, must enter own keys/model version
