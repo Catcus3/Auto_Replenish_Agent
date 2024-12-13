@@ -1,0 +1,216 @@
+#pip install
+!pip install faiss-gpu --quiet
+!pip install boto3 --quiet
+!pip install langchain-aws --quiet
+!pip install langchain-community boto3 --quiet
+!pip install boto3 requests requests-aws4auth --quiet
+!pip install pymongo --quiet
+!pip install google-search-results sagemaker --quiet
+!pip install boto3 nltk --quiet
+!pip install wikipedia --quiet
+!pip install tavily-python --quiet
+!pip install --upgrade langchain sympy numexpr --quiet
+!pip install langchain-experimental --quiet
+!pip install -U langgraph langchain_community langchain_anthropic langchain_experimental --quiet
+!pip install langchain-redis langchain-openai redis --quiet
+!pip install mailjet_rest --quiet
+#!docker run -d -p 6379:6379 redis:latest --quiet
+
+import boto3
+import os
+from langchain import hub
+from mailjet_rest import Client
+
+#chat models
+from langchain_aws import ChatBedrock
+from langchain_aws import ChatBedrockConverse
+
+#LLMs
+from langchain_aws import BedrockLLM
+from langchain_community.llms import AmazonAPIGateway
+from langchain_aws import SagemakerEndpoint
+
+#prompts
+from langchain.prompts import PromptTemplate
+
+#embedding models
+from langchain_aws import BedrockEmbeddings
+# from langchain_community.embeddings import BedrockEmbeddings
+from langchain_community.embeddings import SagemakerEndpointEmbeddings
+from langchain_community.llms.sagemaker_endpoint import ContentHandlerBase
+
+#document loaders
+from langchain_community.document_loaders import S3DirectoryLoader, S3FileLoader
+from langchain_community.document_loaders import AmazonTextractPDFLoader
+
+#vector stores
+from langchain_community.vectorstores import OpenSearchVectorSearch
+from langchain_community.vectorstores import DocumentDBVectorSearch
+
+from langchain_aws.vectorstores.inmemorydb import InMemoryVectorStore
+
+#retrievers
+from langchain_aws import AmazonKendraRetriever
+from langchain_aws import AmazonKnowledgeBasesRetriever
+
+#memory
+from langchain_community.chat_message_histories import DynamoDBChatMessageHistory
+from langchain_community.chat_message_histories.redis import RedisChatMessageHistory
+from langchain.memory import ChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import ConfigurableFieldSpec
+from langchain_core.runnables import RunnablePassthrough
+
+#graphs
+from langchain_community.graphs import NeptuneGraph
+from langchain_community.graphs import NeptuneAnalyticsGraph
+from langchain_community.chains.graph_qa.neptune_cypher import NeptuneOpenCypherQAChain
+
+from langchain_community.graphs import NeptuneRdfGraph
+from langchain_community.chains.graph_qa.neptune_sparql import NeptuneSparqlQAChain
+
+#callbacks
+from langchain_community.callbacks.bedrock_anthropic_callback import BedrockAnthropicTokenUsageCallbackHandler
+from langchain_community.callbacks import SageMakerCallbackHandler
+
+#chains
+# from langchain_experimental.comprehend_moderation import AmazonComprehendModerationChain
+
+#tavily
+from tavily import TavilyClient
+from langchain_community.tools.tavily_search import TavilySearchResults
+
+#tools
+from langchain.agents import initialize_agent, Tool, load_tools
+from langchain.tools import BaseTool
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.vectorstores import FAISS
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.document_loaders import DirectoryLoader, CSVLoader
+from langchain.tools.retriever import create_retriever_tool
+from langchain_core.tools import Tool
+from langchain_experimental.utilities import PythonREPL
+
+#agent
+from langchain.agents import create_tool_calling_agent, AgentType
+from langchain.agents import AgentExecutor
+from langchain.chat_models import ChatOpenAI
+
+model_parameter = {"temperature": 0.9, "top_p": .5, "max_tokens_to_sample": 200}
+modelId = "anthropic.claude-3-sonnet-20240229-v1:0"
+bedrock_llm = ChatBedrock(
+    model_id=modelId,
+    client=boto3.client('bedrock'),
+    model_kwargs=model_parameter, 
+    beta_use_converse_api=True
+)
+
+embeddings = BedrockEmbeddings(
+    client=boto3.client('bedrock-runtime', region_name="us-east-1"),
+    model_id = "amazon.titan-embed-text-v2:0"
+)
+
+os.environ['MJ_APIKEY_PUBLIC'] = '3ca28dfede990c7e1df73da9f7303f06'
+os.environ['MJ_APIKEY_PRIVATE'] = '9c4976205a677cf6c975dc22ae43656e'
+
+# Access them using os.environ
+api_key = os.environ['MJ_APIKEY_PUBLIC']
+api_secret = os.environ['MJ_APIKEY_PRIVATE']
+
+# Initialize Mailjet client
+mailjet = Client(auth=(api_key, api_secret))
+
+os.environ["TAVILY_API_KEY"] = "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"
+search = TavilySearchResults()
+
+# Define the path to the directory containing CSV files
+data_files_directory = "data_files"
+
+# Use DirectoryLoader to load all CSV files
+loader = DirectoryLoader(
+    data_files_directory,
+    glob="**/*.csv",  # Match all CSV files in the directory (including subdirectories)
+    loader_cls=CSVLoader  # Use CSVLoader for parsing the files
+)
+
+docs = loader.load()
+documents = RecursiveCharacterTextSplitter(
+    chunk_size=1000, chunk_overlap=200
+).split_documents(docs)
+vector = FAISS.from_documents(documents, embeddings)
+retriever = vector.as_retriever()
+
+retriever_tool = create_retriever_tool(
+    retriever,
+    "Retriever_tool",
+    "First search internal data files to answer any queries. If there is no useful information then use other tools.",
+)
+
+#datetime tool
+from datetime import datetime
+datetime_tool = Tool(
+    name="Datetime",
+    func=lambda x: datetime.now().isoformat(),
+    description="Returns the current datetime",
+)
+
+#loading in tools
+
+python_repl = PythonREPL()
+repl_tool = Tool(
+    name="python_repl",
+    description="Use this to execute python commands and calculations.",
+    func=python_repl.run,
+)
+wikipedia_tool = load_tools(["wikipedia"], llm=bedrock_llm)
+
+prompt = PromptTemplate(
+    input_variables=["input", "agent_scratchpad"],  # Include both input and agent_scratchpad
+    template="""
+    
+If the input is to do with retail or an item to buy, do the following:
+
+Use the retriever tool to answer any queries related to internal data files. 
+Only use external tools (like Wikipedia) if no relevant information is found internally.
+When asked about a specific item output the answers to the following queries: 
+
+Should this item be ordered? 
+Find out what date it is currently using date time tool. Convert the month and year into strings and use these for the rest of the answer.
+Use recent stock statistics to see if the stocks for this month are low compared to how much was used last month.
+Use the statistics from last year to predict how much of each item will be needed for the rest of this month and next month.
+Use what month it is at the time the call is being made and whether any important holidays eg christmas or summer will be coming up and use this information in your decision.
+a) how much should be ordered for this month and next month
+b) how much should be ordered in the next few months
+
+
+What brand?
+Use the customers reviews to decide this. 
+
+If this item should be ordered, how much of this item should be ordered?
+Use the repl tool to calculate these numbers.
+
+In your final output:
+1. Explain your reasoning for whether an item should be ordered and how much.
+Don't explain your reasoning for
+Explain the maths you used.
+2. Draft an email to an imaginary supplier of this brand to order the number of the item you think should be ordered, signing off as Reply Auto Replenishment.
+
+Else:
+Answer the question appropriately using multiple tools to verify your answer
+
+Query: {input}
+
+{agent_scratchpad}
+"""
+)
+
+
+tools = [datetime_tool,retriever_tool,search,repl_tool,wikipedia_tool[0]]
+
+agent_input = 'toothpaste'
+agent = create_tool_calling_agent(bedrock_llm, tools, email_prompt)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True,handle_parsing_errors=True)
+response = agent_executor.invoke({"input": agent_input})
+raw_output = response['output'][0]['text']
+print(raw_output)
