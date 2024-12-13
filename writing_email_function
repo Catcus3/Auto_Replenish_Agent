@@ -1,0 +1,70 @@
+email_prompt = PromptTemplate(
+    input_variables=["input", "agent_scratchpad"],  # Include both input and agent_scratchpad
+    template="""
+Use the retriever tool to answer any queries related to internal data files. 
+Only use external tools (like Wikipedia) if no relevant information is found internally.
+When asked about a specific item output the answers to the following queries: 
+
+Should this item be ordered? 
+Find out what date it is currently using date time tool. Convert the month and year into strings and use these for the rest of the answer.
+Use recent stock statistics to see if the stocks for this month are low compared to how much was used last month.
+Use the statistics from last year to predict how much of each item will be needed for the rest of this month and next month.
+Use what month it is at the time the call is being made and whether any important holidays eg christmas or summer will be coming up and use this information in your decision.
+a) how much should be ordered for this month and next month
+b) how much should be ordered in the next few months
+
+What brand?
+Use the customers reviews to decide this. 
+
+If this item should be ordered, how much of this item should be ordered?
+Use the repl tool to calculate these numbers.
+
+Draft an email to an imaginary supplier of this brand to order the number of the item you think should be ordered, signing off as Reply Auto Replenishment.
+If you decide that an item should be ordered, use the email writing tool to send the appropriate email.
+The parameters to the function writing_email should be:
+recipient='lucaswong631@gmail.com
+my_name= [you as a model decide name of sender]
+subject= [you as a model decide subject of email]
+text= [email you drafted]
+html= [any html you want to add in, if not set it as '']
+The only thing you should output is the email and 'Email sent', or 'No need to order more of [item]'.
+If you decide there is no need to order more of an item, explain why, but if you send an email do not output anything else back.
+
+Query: {input}
+
+{agent_scratchpad}
+"""
+)
+
+sender_email = '' #your email
+def write_email(recipient,my_name,subject,text,html):
+    data = {
+        'FromEmail': sender_email,
+        'FromName': my_name,
+        'Subject': subject,
+        'Text-part': text,
+        'Html-part': html,
+        'Recipients': [{'Email': recipient}]
+}
+    result = mailjet.send.create(data=data)
+    print(result.status_code)
+    print(result.json())
+
+from mailjet_rest import Client
+import os
+
+os.environ['MJ_APIKEY_PUBLIC'] = '3ca28dfede990c7e1df73da9f7303f06'
+os.environ['MJ_APIKEY_PRIVATE'] = '9c4976205a677cf6c975dc22ae43656e'
+
+# Access them using os.environ
+api_key = os.environ['MJ_APIKEY_PUBLIC']
+api_secret = os.environ['MJ_APIKEY_PRIVATE']
+
+# Initialize Mailjet client
+mailjet = Client(auth=(api_key, api_secret))
+
+recipient_email = ''
+name_sender = ''
+email_title = ''
+email_text = raw_list[0] #raw_list is list of all raw outputs of agent, change index or loop through to send different emails depending on input to model
+write_email(recipient_email,name_sender,email_title,email_text,'')
